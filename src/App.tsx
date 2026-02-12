@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Typography } from '@mui/material';
 import { RawMaterials } from './pages/RawMaterials';
 import { Products } from './pages/Products';
 import { Planning } from './pages/Planning';
+import { Dashboard } from './pages/Dashboard';
 
-const Dashboard = () => <Typography variant="h4">Bem-vindo ao Sistema</Typography>;
 
 function App() {
   return (

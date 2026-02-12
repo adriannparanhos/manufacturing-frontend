@@ -2,18 +2,20 @@ import { useEffect, useState } from 'react';
 import { 
   Box, Typography, Paper, Button, Chip, Dialog, DialogTitle, 
   DialogContent, DialogActions, TextField, MenuItem, IconButton, 
-  List, ListItem, ListItemText, Divider, Alert
+  List, ListItem, ListItemText, Divider, Snackbar, Alert, InputAdornment
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import { api } from '../services/api';
 import type { Product, RawMaterial } from '../types';
 
 export const Products = () => {
   const [rows, setRows] = useState<Product[]>([]);
-  const [materials, setMaterials] = useState<RawMaterial[]>([]); 
+  const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -23,6 +25,16 @@ export const Products = () => {
   const [recipe, setRecipe] = useState<{ materialId: number; materialName: string; quantity: number }[]>([]);
   const [selectedMaterialId, setSelectedMaterialId] = useState<number | ''>('');
   const [ingredientQty, setIngredientQty] = useState('');
+
+  const [toast, setToast] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'warning'
+  });
+
+  const showToast = (message: string, severity: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ open: true, message, severity });
+  };
 
   useEffect(() => {
     fetchData();
@@ -38,13 +50,17 @@ export const Products = () => {
       setMaterials(matRes.data);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+      showToast("Erro ao carregar dados do servidor", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddIngredient = () => {
-    if (!selectedMaterialId || !ingredientQty) return alert("Selecione um item e quantidade!");
+    if (!selectedMaterialId || !ingredientQty) {
+      showToast("Selecione um item e a quantidade", "warning");
+      return;
+    }
 
     const material = materials.find(m => m.id === selectedMaterialId);
     if (!material) return;
@@ -64,8 +80,14 @@ export const Products = () => {
   };
 
   const handleSaveProduct = async () => {
-    if (!productName || !productPrice) return alert("Preencha nome e preço!");
-    if (recipe.length === 0) return alert("O produto precisa de pelo menos 1 ingrediente!");
+    if (!productName || !productPrice) {
+      showToast("Preencha nome e preço", "warning");
+      return;
+    }
+    if (recipe.length === 0) {
+      showToast("Adicione pelo menos 1 ingrediente", "warning");
+      return;
+    }
 
     try {
       const payload = {
@@ -83,12 +105,22 @@ export const Products = () => {
       setProductName('');
       setProductPrice('');
       setRecipe([]);
+      showToast("Produto salvo com sucesso!", "success");
       fetchData(); 
 
     } catch (error: any) {
-      alert("Erro ao salvar! Verifique se não faltou estoque ou se o Backend está on.");
+      showToast("Erro ao salvar produto", "error");
       console.error(error);
     }
+  };
+
+  const checkViability = (product: Product) => {
+    if (!product.compositions || product.compositions.length === 0) return false;
+
+    return product.compositions.every((comp: any) => {
+      const material = materials.find(m => m.id === comp.materialId);
+      return material && material.stockQuantity >= comp.quantity;
+    });
   };
 
   const columns: GridColDef[] = [
@@ -96,11 +128,25 @@ export const Products = () => {
     { field: 'name', headerName: 'Produto', flex: 1 },
     { 
       field: 'salesValue', 
-      headerName: 'Preço (R$)', 
-      width: 120,
-      valueFormatter: (value: number) => {
-        if (value == null) return '';
-        return `R$ ${Number(value).toFixed(2)}`;
+      headerName: 'Preço', 
+      width: 100,
+      valueFormatter: (value: number) => value ? `R$ ${Number(value).toFixed(2)}` : ''
+    },
+    {
+      field: 'status',
+      headerName: 'Status Produção',
+      width: 180,
+      renderCell: (params) => {
+        const isViable = checkViability(params.row);
+        return (
+          <Chip 
+            icon={isViable ? <CheckCircleIcon /> : <ErrorIcon />}
+            label={isViable ? "Produção Viável" : "Falta Estoque"}
+            color={isViable ? "success" : "error"}
+            variant="outlined"
+            size="small"
+          />
+        );
       }
     },
     {
@@ -141,15 +187,12 @@ export const Products = () => {
         />
       </Paper>
 
-      {}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Novo Produto</DialogTitle>
         <DialogContent>
-          {}
           <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
             <TextField 
-              label="Nome do Produto" 
-              fullWidth 
+              label="Nome do Produto" fullWidth 
               value={productName}
               onChange={e => setProductName(e.target.value)}
             />
@@ -159,17 +202,17 @@ export const Products = () => {
               fullWidth 
               value={productPrice}
               onChange={e => setProductPrice(e.target.value)}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">R$</InputAdornment>,
+              }}
             />
           </Box>
 
           <Divider sx={{ my: 2 }}>Receita (Ingredientes)</Divider>
 
-          {}
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
-              select
-              label="Matéria-Prima"
-              fullWidth
+              select label="Matéria-Prima" fullWidth
               value={selectedMaterialId}
               onChange={e => setSelectedMaterialId(Number(e.target.value))}
             >
@@ -180,16 +223,13 @@ export const Products = () => {
               ))}
             </TextField>
             <TextField 
-              label="Qtd" 
-              type="number" 
-              sx={{ width: 100 }}
+              label="Qtd" type="number" sx={{ width: 100 }}
               value={ingredientQty}
               onChange={e => setIngredientQty(e.target.value)}
             />
             <Button variant="outlined" onClick={handleAddIngredient}>Add</Button>
           </Box>
 
-          {}
           <Paper variant="outlined" sx={{ mt: 2, maxHeight: 150, overflow: 'auto' }}>
             {recipe.length === 0 ? (
               <Typography sx={{ p: 2, color: 'gray', textAlign: 'center' }}>
@@ -221,6 +261,17 @@ export const Products = () => {
           <Button onClick={handleSaveProduct} variant="contained">Salvar Produto</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar 
+        open={toast.open} 
+        autoHideDuration={6000} 
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setToast({ ...toast, open: false })} severity={toast.severity} sx={{ width: '100%' }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

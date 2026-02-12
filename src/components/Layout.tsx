@@ -2,8 +2,6 @@ import { Box, AppBar, Toolbar, Typography, CssBaseline } from '@mui/material';
 import { Sidebar } from './Sidebar';
 import { Outlet } from 'react-router-dom';
 
-const drawerWidth = 240;
-
 export const Layout = () => {
   return (
     <Box sx={{ display: 'flex' }}>
