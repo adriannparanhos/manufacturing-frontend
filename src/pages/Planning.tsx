@@ -13,6 +13,7 @@ export const Planning = () => {
   const [quantity, setQuantity] = useState<string>('');
   const [plan, setPlan] = useState<ProductionPlan | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<Product[]>('/products')
@@ -25,6 +26,7 @@ export const Planning = () => {
 
     setLoading(true);
     setPlan(null);
+    setErrorMessage(null);
 
     api.post<ProductionPlan>('/planning', {
       productId: selectedProductId,
@@ -34,8 +36,13 @@ export const Planning = () => {
       setPlan(response.data);
     })
     .catch((error) => {
-      alert("Erro ao calcular! Verifique o Backend.");
-      console.error(error);
+      if (error.response && error.response.status === 400) {
+        const msg = error.response.data.message || error.response.data || "Erro de validação.";
+        setErrorMessage(msg);
+      } else {
+        alert("Erro ao calcular! Verifique o Backend.");
+        console.error(error);
+      }
     })
     .finally(() => setLoading(false));
   };
@@ -44,7 +51,12 @@ export const Planning = () => {
     <Box>
       <Typography variant="h4" gutterBottom>Planejamento de Produção</Typography>
       
-      {}
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {errorMessage}
+        </Alert>
+      )}
+
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>O que vamos produzir hoje?</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -82,13 +94,15 @@ export const Planning = () => {
         </Box>
       </Paper>
 
-      {}
       {plan && (
         <Box sx={{ animation: 'fadeIn 0.5s' }}>
-          {}
+          
+          <Alert severity="success" sx={{ mb: 3 }}>
+            Estoque verificado e planejamento salvo com sucesso!
+          </Alert>
+
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
             
-            {}
             <Box sx={{ flex: 1 }}> 
               <Card sx={{ bgcolor: '#e3f2fd', height: '100%' }}>
                 <CardContent>
@@ -110,7 +124,6 @@ export const Planning = () => {
               </Card>
             </Box>
 
-            {}
             <Box sx={{ flex: 2 }}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
