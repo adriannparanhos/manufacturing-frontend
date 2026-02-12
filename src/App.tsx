@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Typography } from '@mui/material';
+import { RawMaterials } from './pages/RawMaterials';
+import { Products } from './pages/Products';
+import { Planning } from './pages/Planning';
 
 const Dashboard = () => <Typography variant="h4">Bem-vindo ao Sistema</Typography>;
-const RawMaterials = () => <Typography variant="h4">Tela de Matérias-Primas</Typography>;
-const Products = () => <Typography variant="h4">Tela de Produtos</Typography>;
-const Planning = () => <Typography variant="h4">Tela de Planejamento</Typography>;
 
 function App() {
   return (
