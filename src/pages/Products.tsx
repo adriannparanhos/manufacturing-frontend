@@ -164,8 +164,32 @@ export const Products = () => {
           ))}
         </Box>
       )
+    },
+    {
+      field: 'actions',
+      headerName: 'Ações',
+      width: 80,
+      renderCell: (params) => (
+        <IconButton onClick={() => handleDelete(params.row.id)} color="error" size="small">
+          <DeleteIcon />
+        </IconButton>
+      )
     }
   ];
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza? Isso excluirá o produto e sua receita.")) return;
+
+    try {
+      await api.delete(`/products/${id}`);
+      showToast("Produto excluído com sucesso", "success");
+      fetchData();
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data || "Erro ao excluir produto";
+      showToast(msg, "error");
+    }
+  };
 
   return (
     <Box>
